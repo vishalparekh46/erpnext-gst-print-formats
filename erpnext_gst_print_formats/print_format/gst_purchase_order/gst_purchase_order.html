@@ -1,0 +1,94 @@
+{%- set doc = frappe.get_doc(doctype, docname) %}
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 4px 6px; }
+  th { background: #f0f0f0; font-weight: bold; }
+  .header { text-align: center; margin-bottom: 10px; }
+  .two-col { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .two-col div { width: 48%; }
+  .label { font-weight: bold; }
+  .totals { float: right; margin-top: 8px; }
+  .totals table td { padding: 2px 8px; }
+  .sign-section { margin-top: 40px; text-align: right; }
+  .clearfix::after { content: ""; display: block; clear: both; }
+</style>
+
+<div class="header">
+  <h2>{{ doc.company }}</h2>
+  <h3>PURCHASE ORDER</h3>
+</div>
+
+<div class="two-col">
+  <div>
+    <span class="label">Supplier:</span><br/>
+    <strong>{{ doc.supplier_name }}</strong><br/>
+    {{ doc.supplier_address or "" }}<br/>
+    {%- set supplier_gstin = frappe.db.get_value("Supplier", doc.supplier, "gstin") %}
+    {%- if supplier_gstin %}
+    <span class="label">Supplier GSTIN:</span> {{ supplier_gstin }}<br/>
+    {%- endif %}
+  </div>
+  <div>
+    <span class="label">PO Number:</span> {{ doc.name }}<br/>
+    <span class="label">Date:</span> {{ doc.transaction_date }}<br/>
+    <span class="label">Required By:</span> {{ doc.schedule_date or "" }}<br/>
+    {%- if doc.place_of_supply %}
+    <span class="label">Place of Supply:</span> {{ doc.place_of_supply }}<br/>
+    {%- endif %}
+    {%- set company_gstin = frappe.db.get_value("Company", doc.company, "gstin") %}
+    {%- if company_gstin %}
+    <span class="label">Company GSTIN:</span> {{ company_gstin }}<br/>
+    {%- endif %}
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Item</th>
+      <th>HSN/SAC</th>
+      <th>Qty</th>
+      <th>UOM</th>
+      <th>Rate</th>
+      <th>Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for item in doc.items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.item_name }}<br/><small>{{ item.description or "" }}</small></td>
+      <td>{{ item.gst_hsn_code or "" }}</td>
+      <td>{{ item.qty }}</td>
+      <td>{{ item.uom }}</td>
+      <td style="text-align:right">{{ "{:,.2f}".format(item.rate) }}</td>
+      <td style="text-align:right">{{ "{:,.2f}".format(item.amount) }}</td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</table>
+
+<div class="clearfix">
+  <div class="totals">
+    <table>
+      {%- for tax in doc.taxes %}
+      <tr><td>{{ tax.description }}:</td><td style="text-align:right">{{ "{:,.2f}".format(tax.tax_amount) }}</td></tr>
+      {%- endfor %}
+      <tr><td><strong>Grand Total ({{ doc.currency }}):</strong></td><td style="text-align:right"><strong>{{ "{:,.2f}".format(doc.grand_total) }}</strong></td></tr>
+    </table>
+  </div>
+</div>
+
+{%- if doc.terms %}
+<div style="margin-top:16px">
+  <span class="label">Terms &amp; Conditions:</span><br/>
+  {{ doc.terms }}
+</div>
+{%- endif %}
+
+<div class="sign-section">
+  <p>For {{ doc.company }}</p><br/><br/>
+  <p>Authorised Signatory</p>
+</div>
