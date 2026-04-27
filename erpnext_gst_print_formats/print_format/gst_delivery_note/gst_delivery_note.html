@@ -1,0 +1,76 @@
+{%- set doc = frappe.get_doc(doctype, docname) %}
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 4px 6px; }
+  th { background: #f0f0f0; font-weight: bold; }
+  .header { text-align: center; margin-bottom: 10px; }
+  .two-col { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .two-col div { width: 48%; }
+  .label { font-weight: bold; }
+  .sign-section { margin-top: 40px; text-align: right; }
+</style>
+
+<div class="header">
+  <h2>{{ doc.company }}</h2>
+  <h3>DELIVERY NOTE</h3>
+</div>
+
+<div class="two-col">
+  <div>
+    <span class="label">Deliver To:</span><br/>
+    <strong>{{ doc.customer_name }}</strong><br/>
+    {{ doc.shipping_address or doc.customer_address or "" }}<br/>
+    {%- if doc.customer_gstin %}
+    <span class="label">GSTIN:</span> {{ doc.customer_gstin }}
+    {%- endif %}
+  </div>
+  <div>
+    <span class="label">Delivery Note No:</span> {{ doc.name }}<br/>
+    <span class="label">Date:</span> {{ doc.posting_date }}<br/>
+    {%- if doc.lr_no %}
+    <span class="label">LR No:</span> {{ doc.lr_no }}<br/>
+    {%- endif %}
+    {%- if doc.transporter_name %}
+    <span class="label">Transporter:</span> {{ doc.transporter_name }}<br/>
+    {%- endif %}
+    {%- if doc.vehicle_no %}
+    <span class="label">Vehicle No:</span> {{ doc.vehicle_no }}<br/>
+    {%- endif %}
+    {%- if doc.ewaybill %}
+    <span class="label">e-Way Bill No:</span> {{ doc.ewaybill }}<br/>
+    {%- endif %}
+  </div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Item</th>
+      <th>HSN/SAC</th>
+      <th>Qty</th>
+      <th>UOM</th>
+      <th>Rate</th>
+      <th>Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for item in doc.items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.item_name }}</td>
+      <td>{{ item.gst_hsn_code or "" }}</td>
+      <td>{{ item.qty }}</td>
+      <td>{{ item.uom }}</td>
+      <td style="text-align:right">{{ "{:,.2f}".format(item.rate) }}</td>
+      <td style="text-align:right">{{ "{:,.2f}".format(item.amount) }}</td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</table>
+
+<div class="sign-section">
+  <p>Received in good condition</p><br/><br/>
+  <p>Receiver's Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; For {{ doc.company }}</p>
+</div>
