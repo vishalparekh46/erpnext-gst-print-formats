@@ -1,0 +1,79 @@
+{%- set doc = frappe.get_doc(doctype, docname) %}
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 4px 6px; }
+  th { background: #f0f0f0; font-weight: bold; }
+  .header { text-align: center; margin-bottom: 14px; }
+  .header h2 { margin: 0; }
+  .header h3 { margin: 4px 0; }
+  .detail-row { margin: 4px 0; }
+  .label { font-weight: bold; display: inline-block; min-width: 160px; }
+  .box { border: 2px solid #000; padding: 12px; margin-bottom: 16px; }
+  .amount-box { font-size: 16px; font-weight: bold; text-align: center; padding: 10px; border: 2px solid #000; margin: 12px 0; }
+  .sign-section { margin-top: 40px; display: flex; justify-content: space-between; }
+</style>
+
+<div class="header">
+  <h2>{{ doc.company }}</h2>
+  <h3>PAYMENT RECEIPT</h3>
+  <small>Receipt No: {{ doc.name }} &nbsp;|&nbsp; Date: {{ doc.posting_date }}</small>
+</div>
+
+<div class="box">
+  <div class="detail-row"><span class="label">Received From:</span> <strong>{{ doc.party_name or doc.party }}</strong></div>
+  <div class="detail-row"><span class="label">Payment Type:</span> {{ doc.payment_type }}</div>
+  <div class="detail-row"><span class="label">Mode of Payment:</span> {{ doc.mode_of_payment }}</div>
+  {%- if doc.reference_no %}
+  <div class="detail-row"><span class="label">Reference No:</span> {{ doc.reference_no }} &nbsp; Date: {{ doc.reference_date or "" }}</div>
+  {%- endif %}
+  {%- if doc.remarks %}
+  <div class="detail-row"><span class="label">Remarks:</span> {{ doc.remarks }}</div>
+  {%- endif %}
+</div>
+
+<div class="amount-box">
+  Amount Received: {{ doc.paid_to_account_currency }} {{ "{:,.2f}".format(doc.paid_amount) }}
+</div>
+
+<div class="detail-row"><span class="label">Amount in Words:</span> <em>{{ doc.paid_amount_after_tax_in_words or "" }}</em></div>
+
+{%- if doc.references %}
+<br/>
+<strong>Against Invoices:</strong>
+<table style="margin-top:6px">
+  <thead>
+    <tr>
+      <th>Reference Type</th>
+      <th>Reference Name</th>
+      <th>Due Date</th>
+      <th>Total Amount</th>
+      <th>Allocated Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for ref in doc.references %}
+    <tr>
+      <td>{{ ref.reference_doctype }}</td>
+      <td>{{ ref.reference_name }}</td>
+      <td>{{ ref.due_date or "" }}</td>
+      <td style="text-align:right">{{ "{:,.2f}".format(ref.total_amount or 0) }}</td>
+      <td style="text-align:right">{{ "{:,.2f}".format(ref.allocated_amount or 0) }}</td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</table>
+{%- endif %}
+
+<div class="sign-section">
+  <div>
+    <p>Receiver's Signature</p>
+    <br/>
+    <p>____________________</p>
+  </div>
+  <div style="text-align:right">
+    <p>For {{ doc.company }}</p>
+    <br/>
+    <p>Authorised Signatory</p>
+  </div>
+</div>
