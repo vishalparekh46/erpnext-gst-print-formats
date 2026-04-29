@@ -1,0 +1,104 @@
+{%- set doc = frappe.get_doc(doctype, docname) %}
+<style>
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #000; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 4px 6px; }
+  th { background: #f0f0f0; font-weight: bold; }
+  .header { text-align: center; margin-bottom: 10px; }
+  .header h2 { margin: 0; font-size: 16px; }
+  .header h3 { margin: 4px 0; font-size: 13px; color: #c00; }
+  .two-col { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .two-col div { width: 48%; }
+  .label { font-weight: bold; }
+  .totals { float: right; margin-top: 8px; }
+  .totals table td { padding: 2px 8px; }
+  .grand-total { font-weight: bold; font-size: 13px; }
+  .reason-box { border: 1px solid #ccc; padding: 8px; margin: 12px 0; background: #fffbe6; }
+  .sign-section { margin-top: 40px; text-align: right; }
+  .clearfix::after { content: ""; display: block; clear: both; }
+</style>
+
+<div class="header">
+  <h2>{{ doc.company }}</h2>
+  <h3>CREDIT NOTE</h3>
+  <small>ORIGINAL FOR RECIPIENT</small>
+</div>
+
+<div class="two-col">
+  <div>
+    <span class="label">Customer:</span><br/>
+    <strong>{{ doc.customer_name }}</strong><br/>
+    {{ doc.customer_address or "" }}<br/>
+    {%- if doc.customer_gstin %}
+    <span class="label">GSTIN:</span> {{ doc.customer_gstin }}<br/>
+    {%- endif %}
+  </div>
+  <div>
+    <span class="label">Credit Note No:</span> {{ doc.name }}<br/>
+    <span class="label">Date:</span> {{ doc.posting_date }}<br/>
+    {%- if doc.return_against %}
+    <span class="label">Against Invoice:</span> {{ doc.return_against }}<br/>
+    {%- endif %}
+    {%- if doc.place_of_supply %}
+    <span class="label">Place of Supply:</span> {{ doc.place_of_supply }}<br/>
+    {%- endif %}
+    {%- set company_gstin = frappe.db.get_value("Company", doc.company, "gstin") %}
+    {%- if company_gstin %}
+    <span class="label">Company GSTIN:</span> {{ company_gstin }}<br/>
+    {%- endif %}
+  </div>
+</div>
+
+{%- if doc.reason_for_issuing_document %}
+<div class="reason-box">
+  <span class="label">Reason for Credit Note:</span> {{ doc.reason_for_issuing_document }}
+</div>
+{%- endif %}
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Item Description</th>
+      <th>HSN/SAC</th>
+      <th>Qty</th>
+      <th>UOM</th>
+      <th>Rate</th>
+      <th>Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for item in doc.items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.item_name }}<br/><small>{{ item.description or "" }}</small></td>
+      <td>{{ item.gst_hsn_code or "" }}</td>
+      <td>{{ item.qty | abs }}</td>
+      <td>{{ item.uom }}</td>
+      <td style="text-align:right">{{ "{:,.2f}".format(item.rate) }}</td>
+      <td style="text-align:right">{{ "{:,.2f}".format(item.amount | abs) }}</td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</table>
+
+<div class="clearfix">
+  <div class="totals">
+    <table>
+      <tr><td>Taxable Amount:</td><td style="text-align:right"><strong>{{ "{:,.2f}".format(doc.net_total | abs) }}</strong></td></tr>
+      {%- for tax in doc.taxes %}
+      <tr><td>{{ tax.description }}:</td><td style="text-align:right">{{ "{:,.2f}".format(tax.tax_amount | abs) }}</td></tr>
+      {%- endfor %}
+      <tr class="grand-total"><td><strong>Total Credit ({{ doc.currency }}):</strong></td><td style="text-align:right"><strong>{{ "{:,.2f}".format(doc.grand_total | abs) }}</strong></td></tr>
+    </table>
+  </div>
+</div>
+
+<div style="margin-top: 60px;">
+  <p><em>Amount in Words: {{ doc.in_words }}</em></p>
+</div>
+
+<div class="sign-section">
+  <p>For {{ doc.company }}</p><br/><br/>
+  <p>Authorised Signatory</p>
+</div>
