@@ -1,0 +1,207 @@
+{%- set tax_rows = doc.taxes or [] -%}
+{%- set cgst = namespace(val=0) -%}
+{%- set sgst = namespace(val=0) -%}
+{%- set igst = namespace(val=0) -%}
+{%- for t in tax_rows -%}
+  {%- if 'CGST' in t.description -%}{%- set cgst.val = cgst.val + t.tax_amount -%}{%- endif -%}
+  {%- if 'SGST' in t.description -%}{%- set sgst.val = sgst.val + t.tax_amount -%}{%- endif -%}
+  {%- if 'IGST' in t.description -%}{%- set igst.val = igst.val + t.tax_amount -%}{%- endif -%}
+{%- endfor -%}
+
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin: 0; padding: 0; }
+  .pf-wrap { max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; position: relative; }
+  .watermark {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-35deg);
+    font-size: 72px; font-weight: bold; color: rgba(200,200,200,0.3);
+    white-space: nowrap; pointer-events: none; z-index: 0; letter-spacing: 4px;
+  }
+  .pf-content { position: relative; z-index: 1; }
+  .pf-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2c3e50; padding-bottom: 12px; margin-bottom: 16px; }
+  .company-block h1 { margin: 0; font-size: 20px; color: #2c3e50; }
+  .company-block p { margin: 2px 0; font-size: 11px; color: #555; }
+  .doc-title { text-align: right; }
+  .doc-title h2 { margin: 0; font-size: 18px; color: #e74c3c; font-style: italic; }
+  .doc-title p { margin: 2px 0; font-size: 11px; }
+  .validity-box { display: inline-block; border: 1px solid #e74c3c; padding: 4px 10px; border-radius: 4px; margin-top: 6px; font-size: 11px; color: #e74c3c; font-weight: bold; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .info-box { border: 1px solid #ddd; border-radius: 4px; padding: 10px; }
+  .info-box h4 { margin: 0 0 6px; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-box p { margin: 2px 0; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  table th { background: #2c3e50; color: #fff; padding: 7px 8px; text-align: left; font-size: 11px; }
+  table td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; }
+  table tr:nth-child(even) td { background: #f9f9f9; }
+  .text-right { text-align: right; }
+  .totals-table { margin-left: auto; width: 50%; }
+  .totals-table td { padding: 4px 8px; font-size: 11px; }
+  .totals-table .grand-total td { font-weight: bold; font-size: 13px; border-top: 2px solid #2c3e50; color: #2c3e50; }
+  .amount-words { background: #f5f5f5; padding: 8px 12px; font-size: 11px; border-left: 3px solid #2c3e50; margin-bottom: 14px; }
+  .footer-note { font-size: 10px; color: #888; border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
+  .gstin-badge { font-size: 10px; background: #eaf4fb; border: 1px solid #aed6f1; padding: 2px 6px; border-radius: 3px; display: inline-block; margin-top: 4px; }
+  .note-box { background: #fff8e1; border: 1px solid #ffe082; padding: 8px 12px; font-size: 11px; border-radius: 4px; margin-bottom: 12px; }
+</style>
+
+<div class="pf-wrap">
+  <div class="watermark">PROFORMA INVOICE</div>
+  <div class="pf-content">
+
+    <!-- Header -->
+    <div class="pf-header">
+      <div class="company-block">
+        <h1>{{ doc.company }}</h1>
+        <p>{{ doc.company_address or '' }}</p>
+        {% if doc.company_gstin %}<span class="gstin-badge">GSTIN: {{ doc.company_gstin }}</span>{% endif %}
+      </div>
+      <div class="doc-title">
+        <h2>Proforma Invoice</h2>
+        <p><strong>No.:</strong> {{ doc.name }}</p>
+        <p><strong>Date:</strong> {{ doc.transaction_date }}</p>
+        {% if doc.valid_till %}
+        <div class="validity-box">Valid Till: {{ doc.valid_till }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div class="note-box">
+      ⚠️ This is a <strong>Proforma Invoice</strong> and is not a demand for payment.
+      It is subject to revision and does not constitute a tax invoice under GST.
+    </div>
+
+    <!-- Billing / Shipping -->
+    <div class="info-grid">
+      <div class="info-box">
+        <h4>Bill To</h4>
+        <p><strong>{{ doc.customer_name }}</strong></p>
+        <p>{{ doc.address_display | replace('<br>', '
+') | striptags if doc.address_display else '' }}</p>
+        {% if doc.customer_gstin %}<span class="gstin-badge">GSTIN: {{ doc.customer_gstin }}</span>{% endif %}
+      </div>
+      <div class="info-box">
+        <h4>Ship To</h4>
+        <p>{{ doc.shipping_address_name or doc.customer_name }}</p>
+        <p>{{ doc.shipping_address | replace('<br>', '
+') | striptags if doc.shipping_address else doc.address_display | replace('<br>', '
+') | striptags }}</p>
+        {% if doc.place_of_supply %}<p><strong>Place of Supply:</strong> {{ doc.place_of_supply }}</p>{% endif %}
+      </div>
+    </div>
+
+    <!-- Reference Info -->
+    <div class="info-grid" style="margin-bottom:16px;">
+      <div class="info-box">
+        <h4>Reference</h4>
+        {% if doc.po_no %}<p><strong>PO No.:</strong> {{ doc.po_no }}</p>{% endif %}
+        {% if doc.po_date %}<p><strong>PO Date:</strong> {{ doc.po_date }}</p>{% endif %}
+        <p><strong>Currency:</strong> {{ doc.currency }}</p>
+      </div>
+      <div class="info-box">
+        <h4>Terms</h4>
+        <p><strong>Payment Terms:</strong> {{ doc.payment_terms_template or 'As agreed' }}</p>
+        {% if doc.tc_name %}<p><strong>Terms & Conditions:</strong> {{ doc.tc_name }}</p>{% endif %}
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Item Description</th>
+          <th>HSN/SAC</th>
+          <th class="text-right">Qty</th>
+          <th class="text-right">Rate</th>
+          <th class="text-right">Discount</th>
+          <th class="text-right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in doc.items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>
+            <strong>{{ item.item_name }}</strong>
+            {% if item.description and item.description != item.item_name %}
+            <br><span style="color:#666;">{{ item.description | striptags }}</span>
+            {% endif %}
+          </td>
+          <td>{{ item.gst_hsn_code or '-' }}</td>
+          <td class="text-right">{{ item.qty }} {{ item.uom }}</td>
+          <td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(item.rate) }}</td>
+          <td class="text-right">
+            {% if item.discount_percentage %}{{ item.discount_percentage }}%{% else %}-{% endif %}
+          </td>
+          <td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(item.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Tax Summary -->
+    {% if tax_rows %}
+    <table>
+      <thead>
+        <tr>
+          <th>Tax Description</th>
+          <th class="text-right">Rate %</th>
+          <th class="text-right">Taxable Amount</th>
+          <th class="text-right">Tax Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tax_rows %}
+        <tr>
+          <td>{{ t.description }}</td>
+          <td class="text-right">{{ t.rate }}%</td>
+          <td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(t.tax_amount / (t.rate / 100) if t.rate else 0) }}</td>
+          <td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(t.tax_amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <!-- Totals -->
+    <table class="totals-table">
+      <tr>
+        <td>Subtotal</td>
+        <td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(doc.net_total) }}</td>
+      </tr>
+      {% if cgst.val %}<tr><td>CGST</td><td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(cgst.val) }}</td></tr>{% endif %}
+      {% if sgst.val %}<tr><td>SGST</td><td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(sgst.val) }}</td></tr>{% endif %}
+      {% if igst.val %}<tr><td>IGST</td><td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(igst.val) }}</td></tr>{% endif %}
+      {% if doc.discount_amount %}<tr><td>Discount</td><td class="text-right">- {{ doc.currency }} {{ "{:,.2f}".format(doc.discount_amount) }}</td></tr>{% endif %}
+      {% if doc.rounded_total %}<tr><td>Rounding</td><td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(doc.rounding_adjustment or 0) }}</td></tr>{% endif %}
+      <tr class="grand-total">
+        <td>Grand Total</td>
+        <td class="text-right">{{ doc.currency }} {{ "{:,.2f}".format(doc.grand_total) }}</td>
+      </tr>
+    </table>
+
+    <!-- Amount in Words -->
+    {% if doc.in_words %}
+    <div class="amount-words">
+      <strong>Amount in Words:</strong> {{ doc.in_words }}
+    </div>
+    {% endif %}
+
+    <!-- Terms & Conditions -->
+    {% if doc.terms %}
+    <div style="margin-top:12px;">
+      <h4 style="font-size:11px;text-transform:uppercase;color:#888;margin-bottom:4px;">Terms &amp; Conditions</h4>
+      <p style="font-size:11px;color:#555;">{{ doc.terms | striptags }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="footer-note">
+      <p>This Proforma Invoice is computer-generated and does not require a physical signature.
+      It is valid only for the period mentioned above. Prices are subject to change without prior notice.
+      This document does not constitute a GST Tax Invoice.</p>
+      <p style="margin-top:6px;text-align:right;font-style:italic;">For {{ doc.company }}</p>
+    </div>
+
+  </div>
+</div>
