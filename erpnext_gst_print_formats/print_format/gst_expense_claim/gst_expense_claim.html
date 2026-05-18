@@ -1,0 +1,175 @@
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin: 0; padding: 0; }
+  .ec-wrap { max-width: 800px; margin: 0 auto; padding: 20px; border: 1px solid #ccc; }
+  .ec-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #2c3e50; padding-bottom: 12px; margin-bottom: 16px; }
+  .company-block h1 { margin: 0; font-size: 20px; color: #2c3e50; }
+  .company-block p { margin: 2px 0; font-size: 11px; color: #555; }
+  .doc-title { text-align: right; }
+  .doc-title h2 { margin: 0; font-size: 18px; color: #2c3e50; font-weight: bold; }
+  .doc-title p { margin: 2px 0; font-size: 11px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .info-box { border: 1px solid #ddd; border-radius: 4px; padding: 10px; }
+  .info-box h4 { margin: 0 0 6px; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-box p { margin: 2px 0; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+  table th { background: #2c3e50; color: #fff; padding: 7px 8px; text-align: left; font-size: 11px; }
+  table td { padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; }
+  table tr:nth-child(even) td { background: #f9f9f9; }
+  .text-right { text-align: right; }
+  .text-center { text-align: center; }
+  .totals-row td { font-weight: bold; border-top: 2px solid #2c3e50; background: #ecf0f1 !important; }
+  .status-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+  .status-draft { background: #fef9e7; color: #d68910; border: 1px solid #f39c12; }
+  .status-approved { background: #eafaf1; color: #1e8449; border: 1px solid #27ae60; }
+  .status-rejected { background: #fdedec; color: #c0392b; border: 1px solid #e74c3c; }
+  .approval-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 30px; }
+  .approval-box { border-top: 1px solid #aaa; padding-top: 8px; text-align: center; font-size: 10px; color: #666; }
+  .approval-box strong { display: block; margin-bottom: 24px; font-size: 11px; color: #333; }
+  .amount-words { background: #f5f5f5; padding: 8px 12px; font-size: 11px; border-left: 3px solid #2c3e50; margin-bottom: 14px; }
+  .footer-note { font-size: 10px; color: #888; border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
+  .gst-note { background: #eaf4fb; border: 1px solid #aed6f1; padding: 6px 10px; font-size: 10px; border-radius: 4px; margin-bottom: 12px; }
+</style>
+
+<div class="ec-wrap">
+
+  <!-- Header -->
+  <div class="ec-header">
+    <div class="company-block">
+      <h1>{{ doc.company }}</h1>
+      <p>{{ doc.company_address or '' }}</p>
+    </div>
+    <div class="doc-title">
+      <h2>Expense Claim</h2>
+      <p><strong>No.:</strong> {{ doc.name }}</p>
+      <p><strong>Date:</strong> {{ doc.posting_date }}</p>
+      <p>
+        <span class="status-badge
+          {%- if doc.approval_status == 'Approved' %} status-approved
+          {%- elif doc.approval_status == 'Rejected' %} status-rejected
+          {%- else %} status-draft{% endif %}">
+          {{ doc.approval_status or 'Draft' }}
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Employee Info -->
+  <div class="info-grid">
+    <div class="info-box">
+      <h4>Employee</h4>
+      <p><strong>{{ doc.employee_name }}</strong></p>
+      <p><strong>ID:</strong> {{ doc.employee }}</p>
+      {% if doc.department %}<p><strong>Department:</strong> {{ doc.department }}</p>{% endif %}
+      {% if doc.designation %}<p><strong>Designation:</strong> {{ doc.designation }}</p>{% endif %}
+    </div>
+    <div class="info-box">
+      <h4>Claim Details</h4>
+      {% if doc.expense_approver %}<p><strong>Approver:</strong> {{ doc.expense_approver }}</p>{% endif %}
+      {% if doc.approval_status %}<p><strong>Status:</strong> {{ doc.approval_status }}</p>{% endif %}
+      {% if doc.payable_account %}<p><strong>Payable A/c:</strong> {{ doc.payable_account }}</p>{% endif %}
+      {% if doc.cost_center %}<p><strong>Cost Center:</strong> {{ doc.cost_center }}</p>{% endif %}
+    </div>
+  </div>
+
+  <!-- GST Note -->
+  <div class="gst-note">
+    ℹ️ GST amounts shown are as per expense receipts. Input Tax Credit (ITC) eligibility is subject to
+    company policy and GST Act provisions.
+  </div>
+
+  <!-- Expenses Table -->
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Expense Date</th>
+        <th>Expense Type</th>
+        <th>Description</th>
+        <th class="text-right">Amount</th>
+        <th class="text-right">GST (₹)</th>
+        <th class="text-right">Total (₹)</th>
+        <th class="text-center">Receipt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set grand = namespace(amount=0, gst=0, total=0) %}
+      {% for exp in doc.expenses %}
+      {% set gst_amt = exp.amount * (exp.gst_rate / 100) if exp.gst_rate else 0 %}
+      {% set total_amt = exp.amount + gst_amt %}
+      {% set grand.amount = grand.amount + exp.amount %}
+      {% set grand.gst = grand.gst + gst_amt %}
+      {% set grand.total = grand.total + total_amt %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ exp.expense_date }}</td>
+        <td>{{ exp.expense_type }}</td>
+        <td>{{ exp.description or '-' }}</td>
+        <td class="text-right">{{ "{:,.2f}".format(exp.amount) }}</td>
+        <td class="text-right">
+          {% if exp.gst_rate %}{{ exp.gst_rate }}% = {{ "{:,.2f}".format(gst_amt) }}{% else %}-{% endif %}
+        </td>
+        <td class="text-right">{{ "{:,.2f}".format(total_amt) }}</td>
+        <td class="text-center">{{ '✓' if exp.sanctioned_amount else '✗' }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="totals-row">
+        <td colspan="4"><strong>Total</strong></td>
+        <td class="text-right">{{ "{:,.2f}".format(grand.amount) }}</td>
+        <td class="text-right">{{ "{:,.2f}".format(grand.gst) }}</td>
+        <td class="text-right">{{ "{:,.2f}".format(grand.total) }}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Summary -->
+  <div class="info-grid" style="margin-bottom:14px;">
+    <div class="info-box">
+      <h4>Claim Summary</h4>
+      <p><strong>Total Claimed:</strong> ₹ {{ "{:,.2f}".format(doc.total_claimed_amount or 0) }}</p>
+      {% if doc.total_sanctioned_amount %}
+      <p><strong>Total Sanctioned:</strong> ₹ {{ "{:,.2f}".format(doc.total_sanctioned_amount) }}</p>
+      {% endif %}
+      {% if doc.grand_total %}
+      <p><strong>Grand Total:</strong> ₹ {{ "{:,.2f}".format(doc.grand_total) }}</p>
+      {% endif %}
+    </div>
+    <div class="info-box">
+      <h4>Payment Details</h4>
+      {% if doc.payable_account %}<p><strong>Account:</strong> {{ doc.payable_account }}</p>{% endif %}
+      {% if doc.mode_of_payment %}<p><strong>Mode:</strong> {{ doc.mode_of_payment }}</p>{% endif %}
+      {% if doc.remarks %}<p><strong>Remarks:</strong> {{ doc.remarks }}</p>{% endif %}
+    </div>
+  </div>
+
+  <!-- Amount in Words -->
+  {% if doc.total_claimed_amount %}
+  <div class="amount-words">
+    <strong>Amount in Words:</strong>
+    {{ doc.total_claimed_amount | int }} INR
+  </div>
+  {% endif %}
+
+  <!-- Approval Signatures -->
+  <div class="approval-grid">
+    <div class="approval-box">
+      <strong>Employee</strong>
+      {{ doc.employee_name }}
+    </div>
+    <div class="approval-box">
+      <strong>Expense Approver</strong>
+      {{ doc.expense_approver or '_____________' }}
+    </div>
+    <div class="approval-box">
+      <strong>Accounts</strong>
+      _____________
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-note" style="margin-top: 20px;">
+    <p>This Expense Claim is computer-generated. All expenses must be supported by valid receipts.
+    GST Input Tax Credit is subject to verification and compliance with applicable GST rules.</p>
+  </div>
+
+</div>
