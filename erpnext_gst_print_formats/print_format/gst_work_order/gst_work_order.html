@@ -1,0 +1,183 @@
+{%- set company_gstin = doc.company_gstin or "" -%}
+{%- set customer_gstin = doc.customer_gstin or "" -%}
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; }
+  .wo-header { text-align: center; margin-bottom: 8px; }
+  .wo-header h2 { margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+  .wo-header h3 { margin: 2px 0; font-size: 13px; color: #555; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+  .badge-draft     { background: #ffeeba; color: #856404; }
+  .badge-submitted { background: #d4edda; color: #155724; }
+  .badge-stopped   { background: #f8d7da; color: #721c24; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin: 10px 0; }
+  .info-grid .lbl { font-weight: bold; color: #555; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  th { background: #2c3e50; color: #fff; padding: 6px 8px; text-align: left; font-size: 11px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  .text-right { text-align: right; }
+  .section-title { background: #ecf0f1; padding: 4px 8px; font-weight: bold; font-size: 12px;
+                   border-left: 4px solid #2c3e50; margin: 14px 0 6px; }
+  .summary-box { border: 1px solid #ccc; border-radius: 4px; padding: 10px 14px; background: #fdfdfd; }
+  .summary-row { display: flex; justify-content: space-between; padding: 3px 0;
+                 border-bottom: 1px dotted #ddd; font-size: 12px; }
+  .summary-row:last-child { border-bottom: none; font-weight: bold; font-size: 13px; }
+  .footer-sig { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 28px; }
+  .sig-block { border-top: 1px solid #333; padding-top: 6px; text-align: center; font-size: 11px; color: #444; }
+  .note-box { background: #fff8e1; border: 1px solid #ffe082; border-radius: 4px;
+              padding: 8px 12px; font-size: 11px; color: #5d4037; margin: 10px 0; }
+  hr { border: none; border-top: 2px solid #2c3e50; margin: 8px 0; }
+</style>
+
+<!-- Header -->
+<div class="wo-header">
+  <h2>{{ doc.company }}</h2>
+  <h3>Work Order — {{ doc.name }}</h3>
+  {% if company_gstin %}<p style="margin:2px 0;font-size:11px;">GSTIN: {{ company_gstin }}</p>{% endif %}
+  <hr>
+  <div>
+    {% if doc.docstatus == 0 %}
+      <span class="badge badge-draft">DRAFT</span>
+    {% elif doc.docstatus == 1 %}
+      <span class="badge badge-submitted">SUBMITTED</span>
+    {% else %}
+      <span class="badge badge-stopped">STOPPED / CANCELLED</span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Work Order Details -->
+<div class="section-title">Work Order Details</div>
+<div class="info-grid">
+  <div><span class="lbl">WO Number:</span> {{ doc.name }}</div>
+  <div><span class="lbl">Status:</span> {{ doc.status }}</div>
+  <div><span class="lbl">Item to Manufacture:</span> {{ doc.production_item }}</div>
+  <div><span class="lbl">Item Name:</span> {{ doc.item_name or "" }}</div>
+  <div><span class="lbl">BOM No:</span> {{ doc.bom_no }}</div>
+  <div><span class="lbl">Qty to Manufacture:</span> {{ doc.qty }} {{ doc.stock_uom }}</div>
+  <div><span class="lbl">Planned Start Date:</span> {{ doc.planned_start_date }}</div>
+  <div><span class="lbl">Planned End Date:</span> {{ doc.planned_end_date or "—" }}</div>
+  <div><span class="lbl">Actual Start Date:</span> {{ doc.actual_start_date or "—" }}</div>
+  <div><span class="lbl">Actual End Date:</span> {{ doc.actual_end_date or "—" }}</div>
+  <div><span class="lbl">Sales Order Ref:</span> {{ doc.sales_order or "—" }}</div>
+  <div><span class="lbl">Project:</span> {{ doc.project or "—" }}</div>
+  <div><span class="lbl">Production Item UOM:</span> {{ doc.stock_uom }}</div>
+  <div><span class="lbl">Company:</span> {{ doc.company }}</div>
+</div>
+
+<!-- Required Items (Raw Materials) -->
+{% if doc.required_items %}
+<div class="section-title">Required Items (Raw Materials)</div>
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Item Code</th>
+      <th>Item Name</th>
+      <th>Description</th>
+      <th class="text-right">Required Qty</th>
+      <th class="text-right">Transferred Qty</th>
+      <th class="text-right">Consumed Qty</th>
+      <th>UOM</th>
+      <th>Source Warehouse</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in doc.required_items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.item_code }}</td>
+      <td>{{ item.item_name or "" }}</td>
+      <td style="font-size:10px;color:#555;">{{ item.description or "" }}</td>
+      <td class="text-right">{{ item.required_qty }}</td>
+      <td class="text-right">{{ item.transferred_qty or 0 }}</td>
+      <td class="text-right">{{ item.consumed_qty or 0 }}</td>
+      <td>{{ item.stock_uom }}</td>
+      <td style="font-size:10px;">{{ item.source_warehouse or "—" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<!-- Operations -->
+{% if doc.operations %}
+<div class="section-title">Operations</div>
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Operation</th>
+      <th>Workstation</th>
+      <th class="text-right">Planned Operating Time (min)</th>
+      <th class="text-right">Actual Operating Time (min)</th>
+      <th class="text-right">Operating Cost (₹)</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set op_total = namespace(cost=0) %}
+    {% for op in doc.operations %}
+    {% set op_total.cost = op_total.cost + (op.operating_cost or 0) %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ op.operation }}</td>
+      <td>{{ op.workstation or "—" }}</td>
+      <td class="text-right">{{ op.planned_operating_time or 0 }}</td>
+      <td class="text-right">{{ op.actual_operating_time or 0 }}</td>
+      <td class="text-right">{{ "{:,.2f}".format(op.operating_cost or 0) }}</td>
+      <td>{{ op.status or "Pending" }}</td>
+    </tr>
+    {% endfor %}
+    <tr style="font-weight:bold;background:#ecf0f1;">
+      <td colspan="5" class="text-right">Total Operating Cost:</td>
+      <td class="text-right">₹ {{ "{:,.2f}".format(op_total.cost) }}</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+{% endif %}
+
+<!-- Costing Summary -->
+<div class="section-title">Costing Summary</div>
+<div class="summary-box">
+  <div class="summary-row">
+    <span>Raw Material Cost</span>
+    <span>₹ {{ "{:,.2f}".format(doc.raw_material_cost or 0) }}</span>
+  </div>
+  <div class="summary-row">
+    <span>Scrap Material Cost</span>
+    <span>₹ {{ "{:,.2f}".format(doc.scrap_material_cost or 0) }}</span>
+  </div>
+  <div class="summary-row">
+    <span>Operating Cost</span>
+    <span>₹ {{ "{:,.2f}".format(doc.total_operating_cost or 0) }}</span>
+  </div>
+  <div class="summary-row">
+    <span>Additional Operating Cost</span>
+    <span>₹ {{ "{:,.2f}".format(doc.additional_operating_cost or 0) }}</span>
+  </div>
+  <div class="summary-row">
+    <span><strong>Total Cost</strong></span>
+    <span><strong>₹ {{ "{:,.2f}".format(doc.total_cost or 0) }}</strong></span>
+  </div>
+</div>
+
+<!-- GST Note -->
+<div class="note-box">
+  <strong>Note:</strong> Raw materials used in manufacturing are eligible for GST Input Tax Credit (ITC) under
+  Section 16 of the CGST Act, 2017, subject to the conditions prescribed therein. Ensure all supplier invoices
+  are reflected in GSTR-2B before claiming ITC.
+</div>
+
+{% if doc.remarks %}
+<div class="section-title">Remarks</div>
+<p style="font-size:12px;">{{ doc.remarks }}</p>
+{% endif %}
+
+<!-- Signature Section -->
+<div class="footer-sig">
+  <div class="sig-block">Production Manager<br><br></div>
+  <div class="sig-block">Quality Control<br><br></div>
+  <div class="sig-block">Authorised Signatory<br><br></div>
+</div>
