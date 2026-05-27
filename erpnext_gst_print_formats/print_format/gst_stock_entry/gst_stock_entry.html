@@ -1,0 +1,157 @@
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; }
+  .se-header { text-align: center; margin-bottom: 8px; }
+  .se-header h2 { margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+  .se-header h3 { margin: 2px 0; font-size: 13px; color: #555; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+  .badge-draft     { background: #ffeeba; color: #856404; }
+  .badge-submitted { background: #d4edda; color: #155724; }
+  .badge-cancelled { background: #f8d7da; color: #721c24; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin: 10px 0; }
+  .info-grid .lbl { font-weight: bold; color: #555; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  th { background: #2c3e50; color: #fff; padding: 6px 8px; text-align: left; font-size: 11px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  .text-right { text-align: right; }
+  .section-title { background: #ecf0f1; padding: 4px 8px; font-weight: bold; font-size: 12px;
+                   border-left: 4px solid #2c3e50; margin: 14px 0 6px; }
+  .summary-box { border: 1px solid #ccc; border-radius: 4px; padding: 10px 14px;
+                 background: #fdfdfd; max-width: 360px; margin-left: auto; }
+  .summary-row { display: flex; justify-content: space-between; padding: 3px 0;
+                 border-bottom: 1px dotted #ddd; font-size: 12px; }
+  .summary-row:last-child { border-bottom: none; font-weight: bold; font-size: 13px; }
+  .note-box { background: #fff8e1; border: 1px solid #ffe082; border-radius: 4px;
+              padding: 8px 12px; font-size: 11px; color: #5d4037; margin: 10px 0; }
+  .footer-sig { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 28px; }
+  .sig-block { border-top: 1px solid #333; padding-top: 6px; text-align: center; font-size: 11px; color: #444; }
+  hr { border: none; border-top: 2px solid #2c3e50; margin: 8px 0; }
+  .purpose-badge { display: inline-block; padding: 2px 8px; border-radius: 3px;
+                   font-size: 11px; font-weight: bold; background: #d1ecf1; color: #0c5460; }
+</style>
+
+<!-- Header -->
+<div class="se-header">
+  <h2>{{ doc.company }}</h2>
+  <h3>Stock Entry — {{ doc.name }}</h3>
+  <p style="margin:2px 0;font-size:11px;">
+    {% if doc.company_gstin %}GSTIN: {{ doc.company_gstin }}{% endif %}
+  </p>
+  <hr>
+  <div>
+    <span class="purpose-badge">{{ doc.stock_entry_type }}</span>
+    &nbsp;
+    {% if doc.docstatus == 0 %}
+      <span class="badge badge-draft">DRAFT</span>
+    {% elif doc.docstatus == 1 %}
+      <span class="badge badge-submitted">SUBMITTED</span>
+    {% else %}
+      <span class="badge badge-cancelled">CANCELLED</span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Entry Details -->
+<div class="section-title">Entry Details</div>
+<div class="info-grid">
+  <div><span class="lbl">Entry No:</span> {{ doc.name }}</div>
+  <div><span class="lbl">Posting Date:</span> {{ doc.posting_date }}</div>
+  <div><span class="lbl">Posting Time:</span> {{ doc.posting_time or "—" }}</div>
+  <div><span class="lbl">Entry Type:</span> {{ doc.stock_entry_type }}</div>
+  <div><span class="lbl">From Warehouse:</span> {{ doc.from_warehouse or "—" }}</div>
+  <div><span class="lbl">To Warehouse:</span> {{ doc.to_warehouse or "—" }}</div>
+  <div><span class="lbl">Work Order:</span> {{ doc.work_order or "—" }}</div>
+  <div><span class="lbl">Project:</span> {{ doc.project or "—" }}</div>
+  <div><span class="lbl">Purchase Order:</span> {{ doc.purchase_order or "—" }}</div>
+  <div><span class="lbl">Sales Order:</span> {{ doc.sales_order or "—" }}</div>
+  <div><span class="lbl">Company:</span> {{ doc.company }}</div>
+  <div><span class="lbl">Is Return:</span> {{ "Yes" if doc.is_return else "No" }}</div>
+</div>
+
+<!-- Items Table -->
+{% if doc.items %}
+<div class="section-title">Items</div>
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Item Code</th>
+      <th>Item Name</th>
+      <th>Description</th>
+      <th>Batch No</th>
+      <th>Serial No</th>
+      <th class="text-right">Qty</th>
+      <th>UOM</th>
+      <th class="text-right">Basic Rate (₹)</th>
+      <th class="text-right">Basic Amount (₹)</th>
+      <th>Source Warehouse</th>
+      <th>Target Warehouse</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set totals = namespace(qty=0, amount=0) %}
+    {% for item in doc.items %}
+    {% set totals.qty = totals.qty + (item.qty or 0) %}
+    {% set totals.amount = totals.amount + (item.basic_amount or 0) %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.item_code }}</td>
+      <td>{{ item.item_name or "" }}</td>
+      <td style="font-size:10px;color:#555;">{{ item.description or "" }}</td>
+      <td>{{ item.batch_no or "—" }}</td>
+      <td style="font-size:10px;">{{ item.serial_no or "—" }}</td>
+      <td class="text-right">{{ item.qty }}</td>
+      <td>{{ item.uom }}</td>
+      <td class="text-right">{{ "{:,.2f}".format(item.basic_rate or 0) }}</td>
+      <td class="text-right">{{ "{:,.2f}".format(item.basic_amount or 0) }}</td>
+      <td style="font-size:10px;">{{ item.s_warehouse or "—" }}</td>
+      <td style="font-size:10px;">{{ item.t_warehouse or "—" }}</td>
+    </tr>
+    {% endfor %}
+    <tr style="font-weight:bold;background:#ecf0f1;">
+      <td colspan="6" class="text-right">Total:</td>
+      <td class="text-right">{{ totals.qty }}</td>
+      <td></td>
+      <td></td>
+      <td class="text-right">₹ {{ "{:,.2f}".format(totals.amount) }}</td>
+      <td colspan="2"></td>
+    </tr>
+  </tbody>
+</table>
+{% endif %}
+
+<!-- Valuation Summary -->
+<div class="section-title">Valuation Summary</div>
+<div class="summary-box">
+  <div class="summary-row">
+    <span>Total Outgoing Value</span>
+    <span>₹ {{ "{:,.2f}".format(doc.total_outgoing_value or 0) }}</span>
+  </div>
+  <div class="summary-row">
+    <span>Total Incoming Value</span>
+    <span>₹ {{ "{:,.2f}".format(doc.total_incoming_value or 0) }}</span>
+  </div>
+  <div class="summary-row">
+    <span><strong>Value Difference</strong></span>
+    <span><strong>₹ {{ "{:,.2f}".format(doc.value_difference or 0) }}</strong></span>
+  </div>
+</div>
+
+<!-- GST / ITC Note -->
+<div class="note-box">
+  <strong>GST Note:</strong> For Material Transfer entries between GST-registered warehouses in different states,
+  an e-way bill may be required if the consignment value exceeds ₹50,000 as per Rule 138 of the CGST Rules, 2017.
+  ITC reversal may apply for stock written off or used for exempt supplies (Section 17(5), CGST Act).
+</div>
+
+{% if doc.remarks %}
+<div class="section-title">Remarks</div>
+<p style="font-size:12px;">{{ doc.remarks }}</p>
+{% endif %}
+
+<!-- Signature Section -->
+<div class="footer-sig">
+  <div class="sig-block">Prepared By<br><br></div>
+  <div class="sig-block">Store Keeper<br><br></div>
+  <div class="sig-block">Authorised Signatory<br><br></div>
+</div>
