@@ -1,0 +1,175 @@
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; }
+  .pr-header { text-align: center; margin-bottom: 8px; }
+  .pr-header h2 { margin: 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; }
+  .pr-header h3 { margin: 2px 0; font-size: 13px; color: #555; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+  .badge-draft     { background: #ffeeba; color: #856404; }
+  .badge-submitted { background: #d4edda; color: #155724; }
+  .badge-cancelled { background: #f8d7da; color: #721c24; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; margin: 10px 0; }
+  .info-grid .lbl { font-weight: bold; color: #555; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+  th { background: #2c3e50; color: #fff; padding: 6px 8px; text-align: left; font-size: 11px; }
+  td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  .text-right { text-align: right; }
+  .section-title { background: #ecf0f1; padding: 4px 8px; font-weight: bold; font-size: 12px;
+                   border-left: 4px solid #2c3e50; margin: 14px 0 6px; }
+  .totals-table { width: 50%; margin-left: auto; }
+  .totals-table td { border: none; padding: 3px 8px; }
+  .totals-table tr:last-child td { font-weight: bold; border-top: 2px solid #2c3e50;
+                                   font-size: 13px; }
+  .note-box { background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 4px;
+              padding: 8px 12px; font-size: 11px; color: #1b5e20; margin: 10px 0; }
+  .footer-sig { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 28px; }
+  .sig-block { border-top: 1px solid #333; padding-top: 6px; text-align: center; font-size: 11px; color: #444; }
+  hr { border: none; border-top: 2px solid #2c3e50; margin: 8px 0; }
+</style>
+
+<!-- Header -->
+<div class="pr-header">
+  <h2>{{ doc.company }}</h2>
+  <h3>Purchase Receipt — {{ doc.name }}</h3>
+  {% if doc.company_gstin %}<p style="margin:2px 0;font-size:11px;">GSTIN: {{ doc.company_gstin }}</p>{% endif %}
+  <hr>
+  <div>
+    {% if doc.docstatus == 0 %}
+      <span class="badge badge-draft">DRAFT</span>
+    {% elif doc.docstatus == 1 %}
+      <span class="badge badge-submitted">SUBMITTED</span>
+    {% else %}
+      <span class="badge badge-cancelled">CANCELLED</span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Receipt Details -->
+<div class="section-title">Receipt Details</div>
+<div class="info-grid">
+  <div><span class="lbl">Receipt No:</span> {{ doc.name }}</div>
+  <div><span class="lbl">Posting Date:</span> {{ doc.posting_date }}</div>
+  <div><span class="lbl">Supplier:</span> {{ doc.supplier }}</div>
+  <div><span class="lbl">Supplier Name:</span> {{ doc.supplier_name or "" }}</div>
+  <div><span class="lbl">Supplier GSTIN:</span> {{ doc.supplier_gstin or "—" }}</div>
+  <div><span class="lbl">Supplier Invoice No:</span> {{ doc.bill_no or "—" }}</div>
+  <div><span class="lbl">Supplier Invoice Date:</span> {{ doc.bill_date or "—" }}</div>
+  <div><span class="lbl">Purchase Order:</span> {{ doc.purchase_order or "—" }}</div>
+  <div><span class="lbl">Warehouse:</span> {{ doc.set_warehouse or "—" }}</div>
+  <div><span class="lbl">Company:</span> {{ doc.company }}</div>
+  <div><span class="lbl">Is Return:</span> {{ "Yes" if doc.is_return else "No" }}</div>
+  <div><span class="lbl">Currency:</span> {{ doc.currency }}</div>
+</div>
+
+<!-- Supplier Address -->
+{% if doc.supplier_address %}
+<div class="section-title">Supplier Address</div>
+<p style="font-size:12px;margin:4px 0;">
+  {{ doc.address_display | replace("<br>", ", ") | striptags if doc.address_display else "—" }}
+</p>
+{% endif %}
+
+<!-- Items -->
+{% if doc.items %}
+<div class="section-title">Items Received</div>
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Item Code</th>
+      <th>Item Name</th>
+      <th>HSN/SAC</th>
+      <th>Batch No</th>
+      <th class="text-right">Qty</th>
+      <th>UOM</th>
+      <th class="text-right">Rate (₹)</th>
+      <th class="text-right">Amount (₹)</th>
+      <th>Accepted Warehouse</th>
+      <th>Rejected Warehouse</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% set totals = namespace(qty=0, amount=0) %}
+    {% for item in doc.items %}
+    {% set totals.qty = totals.qty + (item.qty or 0) %}
+    {% set totals.amount = totals.amount + (item.amount or 0) %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.item_code }}</td>
+      <td>{{ item.item_name or "" }}</td>
+      <td>{{ item.gst_hsn_code or "—" }}</td>
+      <td>{{ item.batch_no or "—" }}</td>
+      <td class="text-right">{{ item.qty }}</td>
+      <td>{{ item.uom }}</td>
+      <td class="text-right">{{ "{:,.2f}".format(item.rate or 0) }}</td>
+      <td class="text-right">{{ "{:,.2f}".format(item.amount or 0) }}</td>
+      <td style="font-size:10px;">{{ item.warehouse or "—" }}</td>
+      <td style="font-size:10px;">{{ item.rejected_warehouse or "—" }}</td>
+    </tr>
+    {% endfor %}
+    <tr style="font-weight:bold;background:#ecf0f1;">
+      <td colspan="5" class="text-right">Total:</td>
+      <td class="text-right">{{ totals.qty }}</td>
+      <td></td>
+      <td></td>
+      <td class="text-right">₹ {{ "{:,.2f}".format(totals.amount) }}</td>
+      <td colspan="2"></td>
+    </tr>
+  </tbody>
+</table>
+{% endif %}
+
+<!-- Taxes -->
+{% if doc.taxes %}
+<div class="section-title">Taxes & Charges</div>
+<table>
+  <thead>
+    <tr>
+      <th>Tax Head</th>
+      <th>Account</th>
+      <th class="text-right">Rate (%)</th>
+      <th class="text-right">Amount (₹)</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for tax in doc.taxes %}
+    <tr>
+      <td>{{ tax.description }}</td>
+      <td style="font-size:10px;">{{ tax.account_head }}</td>
+      <td class="text-right">{{ tax.rate or 0 }}</td>
+      <td class="text-right">{{ "{:,.2f}".format(tax.tax_amount or 0) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<!-- Amount Summary -->
+<div class="section-title">Amount Summary</div>
+<table class="totals-table">
+  <tr><td>Total (Before Tax)</td><td class="text-right">₹ {{ "{:,.2f}".format(doc.net_total or 0) }}</td></tr>
+  <tr><td>Total Tax</td><td class="text-right">₹ {{ "{:,.2f}".format(doc.total_taxes_and_charges or 0) }}</td></tr>
+  <tr><td>Grand Total</td><td class="text-right">₹ {{ "{:,.2f}".format(doc.grand_total or 0) }}</td></tr>
+  <tr><td>Rounded Total</td><td class="text-right">₹ {{ "{:,.2f}".format(doc.rounded_total or doc.grand_total or 0) }}</td></tr>
+</table>
+
+<!-- GST Input Credit Note -->
+<div class="note-box">
+  <strong>GST Input Tax Credit (ITC):</strong> This Purchase Receipt acknowledges receipt of goods from
+  {{ doc.supplier_name or doc.supplier }}
+  {% if doc.supplier_gstin %}(GSTIN: {{ doc.supplier_gstin }}){% endif %}.
+  ITC on IGST/CGST/SGST paid is eligible subject to the supplier reflecting the invoice in GSTR-1 and
+  the same appearing in your GSTR-2B as per Section 16 read with Section 36(4) of the CGST Act, 2017.
+  Ensure goods are used for taxable supplies to maintain ITC eligibility.
+</div>
+
+{% if doc.remarks %}
+<div class="section-title">Remarks</div>
+<p style="font-size:12px;">{{ doc.remarks }}</p>
+{% endif %}
+
+<div class="footer-sig">
+  <div class="sig-block">Store Keeper<br><br></div>
+  <div class="sig-block">Purchase Manager<br><br></div>
+  <div class="sig-block">Authorised Signatory<br><br></div>
+</div>
