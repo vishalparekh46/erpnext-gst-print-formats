@@ -1,0 +1,157 @@
+{%- set company_gstin = doc.company_gstin or "" -%}
+{%- set customer_gstin = doc.billing_address_gstin or "" -%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 12px; color: #222; margin: 0; padding: 20px; }
+  h2 { text-align: center; margin: 0 0 4px; font-size: 18px; }
+  .subtitle { text-align: center; font-size: 11px; color: #555; margin-bottom: 12px; }
+  .badge { display:inline-block; background:#e53935; color:#fff; padding:2px 10px; border-radius:3px; font-size:11px; font-weight:bold; letter-spacing:.5px; }
+  table.info { width:100%; border-collapse:collapse; margin-bottom:10px; }
+  table.info td { padding:3px 6px; font-size:11px; }
+  table.info td:first-child { font-weight:bold; width:38%; }
+  table.items { width:100%; border-collapse:collapse; margin:10px 0; font-size:11px; }
+  table.items th { background:#c62828; color:#fff; padding:5px 6px; text-align:left; }
+  table.items td { border-bottom:1px solid #ddd; padding:4px 6px; }
+  table.items tr:nth-child(even) td { background:#fafafa; }
+  table.taxes { width:100%; border-collapse:collapse; margin:6px 0; font-size:11px; }
+  table.taxes th { background:#424242; color:#fff; padding:4px 6px; }
+  table.taxes td { border-bottom:1px solid #ddd; padding:3px 6px; }
+  .totals { width:60%; margin-left:auto; border-collapse:collapse; font-size:11px; }
+  .totals td { padding:3px 8px; }
+  .totals .grand { font-weight:bold; font-size:13px; background:#ffebee; }
+  .gst-note { background:#fff8e1; border-left:3px solid #f9a825; padding:8px 12px; margin-top:12px; font-size:10px; color:#555; }
+  .sig { margin-top:30px; display:flex; justify-content:space-between; font-size:11px; }
+  .sig div { text-align:center; width:30%; border-top:1px solid #999; padding-top:4px; }
+  .section-title { font-weight:bold; font-size:12px; margin:10px 0 4px; border-bottom:1px solid #ddd; padding-bottom:3px; }
+  .return-box { background:#fff3e0; border:1px solid #ff8f00; border-radius:4px; padding:6px 10px; margin-bottom:10px; font-size:11px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<h2>{{ doc.company }}</h2>
+<div class="subtitle">
+  GSTIN: {{ company_gstin }} &nbsp;|&nbsp; {{ doc.company_address or "" }}
+</div>
+<div style="text-align:center; margin-bottom:10px;">
+  <span class="badge">SALES RETURN / CREDIT NOTE</span>
+</div>
+
+<!-- Return reason box -->
+<div class="return-box">
+  <strong>&#9888; Return Details</strong><br>
+  Return Against Invoice: <strong>{{ doc.return_against or "N/A" }}</strong> &nbsp;|&nbsp;
+  Return Reason: {{ doc.reason_for_return or "Not specified" }}
+</div>
+
+<!-- Document info -->
+<table class="info">
+  <tr>
+    <td>Credit Note No.</td><td>{{ doc.name }}</td>
+    <td>Date</td><td>{{ doc.posting_date }}</td>
+  </tr>
+  <tr>
+    <td>Customer</td><td>{{ doc.customer_name }}</td>
+    <td>Customer GSTIN</td><td>{{ customer_gstin or "—" }}</td>
+  </tr>
+  <tr>
+    <td>Place of Supply</td><td>{{ doc.place_of_supply or "—" }}</td>
+    <td>Currency</td><td>{{ doc.currency }}</td>
+  </tr>
+  <tr>
+    <td>Company GSTIN</td><td>{{ company_gstin }}</td>
+    <td>Amended From</td><td>{{ doc.amended_from or "—" }}</td>
+  </tr>
+</table>
+
+<!-- Customer Billing Address -->
+<div class="section-title">Customer Billing Address</div>
+<table class="info">
+  <tr>
+    <td>Address</td>
+    <td>{{ doc.customer_address or "—" }}</td>
+  </tr>
+</table>
+
+<!-- Items Table -->
+<div class="section-title">Returned Items</div>
+<table class="items">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Item Code</th>
+      <th>Item Name</th>
+      <th>HSN/SAC</th>
+      <th>Qty</th>
+      <th>UOM</th>
+      <th>Rate</th>
+      <th>Discount</th>
+      <th>Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    {%- for item in doc.items %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.item_code }}</td>
+      <td>{{ item.item_name }}</td>
+      <td>{{ item.gst_hsn_code or "—" }}</td>
+      <td style="text-align:right;">{{ item.qty | abs }}</td>
+      <td>{{ item.uom }}</td>
+      <td style="text-align:right;">{{ item.rate | round(2) }}</td>
+      <td style="text-align:right;">{{ item.discount_percentage or 0 }}%</td>
+      <td style="text-align:right;">{{ (item.amount | abs) | round(2) }}</td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</table>
+
+<!-- Tax breakdown -->
+{%- if doc.taxes %}
+<div class="section-title">Tax Reversal Breakdown</div>
+<table class="taxes">
+  <thead>
+    <tr><th>Tax Description</th><th>Account</th><th style="text-align:right;">Amount</th></tr>
+  </thead>
+  <tbody>
+    {%- for tax in doc.taxes %}
+    <tr>
+      <td>{{ tax.description }}</td>
+      <td>{{ tax.account_head }}</td>
+      <td style="text-align:right;">{{ (tax.tax_amount | abs) | round(2) }}</td>
+    </tr>
+    {%- endfor %}
+  </tbody>
+</table>
+{%- endif %}
+
+<!-- Amount Summary -->
+<table class="totals">
+  <tr><td>Net Total</td><td style="text-align:right;">{{ (doc.net_total | abs) | round(2) }}</td></tr>
+  <tr><td>Total Taxes</td><td style="text-align:right;">{{ (doc.total_taxes_and_charges | abs) | round(2) }}</td></tr>
+  <tr class="grand"><td>Grand Total (Refundable)</td><td style="text-align:right;">{{ doc.currency }} {{ (doc.grand_total | abs) | round(2) }}</td></tr>
+  {%- if doc.rounded_total %}
+  <tr><td>Rounded Total</td><td style="text-align:right;">{{ (doc.rounded_total | abs) | round(2) }}</td></tr>
+  {%- endif %}
+</table>
+
+<!-- GST Reversal Note -->
+<div class="gst-note">
+  <strong>GST Reversal Note:</strong> This Credit Note triggers reversal of ITC in the hands of the recipient as per
+  Section 16(2) read with Rule 37 of the CGST Rules 2017. The recipient must reverse ITC proportional to the
+  credit note amount in their GSTR-2 / GSTR-3B. This document may be reported in GSTR-1 under Table 9B (Amendments)
+  or Table 9 (Credit/Debit Notes to registered persons).
+</div>
+
+<!-- Signatures -->
+<div class="sig">
+  <div>Prepared By</div>
+  <div>Checked By</div>
+  <div>For {{ doc.company }}<br>Authorised Signatory</div>
+</div>
+
+</body>
+                           </html>
