@@ -1,0 +1,115 @@
+{%- set is_purchase = doc.material_request_type == "Purchase" -%}
+{%- set is_transfer = doc.material_request_type == "Material Transfer" -%}
+{%- set is_mfg = doc.material_request_type == "Manufacture" -%}
+{%- set is_cust = doc.material_request_type == "Customer Provided" -%}
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8">
+<style>
+body{font-family:Arial,sans-serif;font-size:12px;color:#222;margin:0;padding:20px}
+h2{text-align:center;margin:0 0 2px;font-size:18px}
+.badge{display:inline-block;padding:2px 10px;border-radius:3px;font-size:11px;font-weight:bold;color:#fff;margin:2px}
+.bp{background:#1565c0}.bt{background:#e65100}.bm{background:#4a148c}.bc{background:#1b5e20}.bd{background:#37474f}
+table{border-collapse:collapse;width:100%}
+th{background:#1565c0;color:#fff;padding:5px 6px;text-align:left;font-size:11px}
+td{padding:3px 6px;font-size:11px;border-bottom:1px solid #eee}
+.info-box{border:1px solid #ccc;border-radius:3px;padding:6px;margin:6px 0;font-size:11px}
+.info-box td{border-bottom:none;padding:2px 4px}
+.two-col{display:flex;gap:10px}
+.two-col > div{flex:1}
+.note{background:#fffde7;border-left:3px solid #f9a825;padding:8px;margin-top:10px;font-size:10px;color:#555}
+.sig{margin-top:28px;display:flex;justify-content:space-between;font-size:11px}
+.sig div{text-align:center;width:30%;border-top:1px solid #999;padding-top:4px}
+.grand{font-weight:bold;background:#e3f2fd}
+.transfer td{background:#fff8e1}
+</style>
+</head>
+<body>
+
+<h2>{{ doc.company }}</h2>
+<p style="text-align:center;font-size:11px;color:#555;margin:0">{{ doc.company_address or "" }}</p>
+<div style="text-align:center;margin:6px 0">
+  {%- if is_purchase %}<span class="badge bp">PURCHASE REQUEST</span>
+  {%- elif is_transfer %}<span class="badge bt">MATERIAL TRANSFER</span>
+  {%- elif is_mfg %}<span class="badge bm">MANUFACTURE REQUEST</span>
+  {%- elif is_cust %}<span class="badge bc">CUSTOMER PROVIDED</span>
+  {%- else %}<span class="badge bd">{{ doc.material_request_type | upper }}</span>
+  {%- endif %}
+</div>
+
+<div class="two-col" style="margin:6px 0">
+  <div class="info-box">
+    <table>
+      <tr><td style="font-weight:bold;width:42%">MR No.</td><td>{{ doc.name }}</td></tr>
+      <tr><td style="font-weight:bold">Date</td><td>{{ doc.transaction_date }}</td></tr>
+      <tr><td style="font-weight:bold">Required By</td><td>{{ doc.schedule_date or "N/A" }}</td></tr>
+      <tr><td style="font-weight:bold">Purpose</td><td>{{ doc.material_request_type }}</td></tr>
+      <tr><td style="font-weight:bold">Status</td><td>{{ doc.status }}</td></tr>
+    </table>
+  </div>
+  <div class="info-box">
+    <table>
+      <tr><td style="font-weight:bold;width:40%">Company</td><td>{{ doc.company }}</td></tr>
+      <tr><td style="font-weight:bold">Requested By</td><td>{{ doc.requested_by or "N/A" }}</td></tr>
+      <tr><td style="font-weight:bold">Cost Centre</td><td>{{ doc.cost_center or "N/A" }}</td></tr>
+      {%- if is_transfer %}
+      <tr><td style="font-weight:bold">To Warehouse</td><td>{{ doc.set_warehouse or "N/A" }}</td></tr>
+      {%- endif %}
+      {%- if is_mfg %}
+      <tr><td style="font-weight:bold">Work Order</td><td>{{ doc.work_order or "N/A" }}</td></tr>
+      <tr><td style="font-weight:bold">BOM</td><td>{{ doc.bom_no or "N/A" }}</td></tr>
+      {%- endif %}
+    </table>
+  </div>
+</div>
+
+<p style="font-weight:bold;margin:8px 0 4px;border-bottom:1px solid #ccc;padding-bottom:3px">Items Requested</p>
+<table>
+  <thead>
+    <tr>
+      <th>#</th><th>Item Code</th><th>Description</th>
+      <th style="text-align:right">Qty</th><th>UOM</th>
+      <th>From Warehouse</th>
+      {%- if is_transfer %}<th>To Warehouse</th>{%- endif %}
+      <th>Required By</th>
+    </tr>
+  </thead>
+  <tbody>
+  {%- for item in doc.items %}
+    <tr{% if is_transfer %} class="transfer"{% endif %}>
+      <td>{{ loop.index }}</td>
+      <td>{{ item.item_code }}</td>
+      <td>{{ item.item_name }}{% if item.description and item.description != item.item_name %}<br><span style="color:#666;font-size:10px">{{ item.description[:80] }}</span>{% endif %}</td>
+      <td style="text-align:right">{{ item.qty }}</td>
+      <td>{{ item.uom }}</td>
+      <td>{{ item.warehouse or "N/A" }}</td>
+      {%- if is_transfer %}<td>{{ item.set_warehouse or doc.set_warehouse or "N/A" }}</td>{%- endif %}
+      <td>{{ item.schedule_date or doc.schedule_date or "N/A" }}</td>
+    </tr>
+  {%- endfor %}
+  </tbody>
+</table>
+
+<div style="display:flex;justify-content:flex-end;margin-top:8px">
+  <table style="width:30%">
+    <tr class="grand"><td>Total Line Items</td><td style="text-align:right">{{ doc.items | length }}</td></tr>
+  </table>
+</div>
+
+<div class="note">
+  <strong>Note:</strong> This is a computer-generated Material Request.
+  {%- if is_purchase %} Items to be sourced via Purchase Order.{%- endif %}
+  {%- if is_transfer %} Internal stock transfer between warehouses.{%- endif %}
+  {%- if is_mfg %} Raw material requirement for production run.{%- endif %}
+  {%- if is_cust %} Material to be provided by customer.{%- endif %}
+  {%- if doc.terms %}<br>{{ doc.terms }}{%- endif %}
+</div>
+
+<div class="sig">
+  <div>Requested By<br>{{ doc.requested_by or "" }}</div>
+  <div>&nbsp;</div>
+  <div>For {{ doc.company }}<br>Authorised Signatory</div>
+</div>
+
+</body>
+</html>
